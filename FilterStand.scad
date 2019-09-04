@@ -2,7 +2,7 @@
 
 bottle_max_diameter = 95;
 bottle_max_height = 183;
-support_rod_diameter = 9.575; // 3/8 in
+support_rod_diameter = 9.72; // 3/8 in
 support_height = 20;
 wall_thickness = 4;
 
@@ -12,42 +12,90 @@ _base_radius = bottle_max_diameter/2 + rim_height   ;
 base_radius = bottle_max_diameter/2 + wall_thickness;
 support_base_radius = support_rod_diameter + wall_thickness;
 
+fudge = 0.001;
+
 _rim_thickness = 3;
 fillet_radius = 2;
+$fa = 5;
+$fs = 0.2;
 
-module tray() {
-    rotate_extrude(angle=360) {
-        translate([_base_radius-_rim_thickness/2,rim_height-_rim_thickness/2]) circle(r=_rim_thickness/2);
-        translate([_base_radius-_rim_thickness,0]) square(size=[_rim_thickness, rim_height-_rim_thickness/2]);
-        square(size=[_base_radius, base_thickness]);
+module torus(r1=1, r2=0.5) {
+    rotate_extrude() {
+        translate([r1,0,0]) circle(r=r2);
+    }
+}
+
+module rounded_disk(r1=1, r2=0.5) {
+    hull() torus(r1=r1, r2=r2);
+}
+
+module rounded_cylinder(r=1, h=1, fillet=0.1) {
+    hull() {
+        translate([0,0,fillet]) rounded_disk(r1=r-fillet, r2=fillet);
+        translate([0,0,h-fillet]) rounded_disk(r1=r-fillet, r2=fillet);
+    }
+}
+
+module hollow_cylinder(r=1, h=1, r2=0.5) {
+    difference() {
+        cylinder(r=r, h=h);
+        #cylinder(r=r2, h=h);
+    }
+}
+
+module rounded_hollow_cylinder(r=1, h=1, r2=0.1) {
+    translate([0,0,r2]) torus(r1=r-r2, r2=r2);
+    translate([0,0,r2]) hollow_cylinder(r=r, h=h-2*r2, r2=r-r2);
+    translate([0,0,h-r2]) torus(r1=r-r2, r2=r2);
+}
+
+module support_rod_mount() {
+    bevel = 1;
+    difference() {
+        rounded_cylinder(r=support_base_radius, h=support_height, fillet=fillet_radius);
+        union() {
+            cylinder(r=support_rod_diameter/2, h=support_height);
+            translate([0,0,support_height-bevel]) {
+                cylinder(r1=support_rod_diameter/2, r2=support_rod_diameter/2+bevel, h=bevel+fudge);
+            }
+        }
     }
 }
 
 module basic_base() {
-        union() {
-            difference() {
-                hull() {
-                    cylinder(r=base_radius, h=rim_height);
-                    translate([0,base_radius + support_base_radius,0]) cylinder(r=support_base_radius, h=rim_height);
-                }
-                minkowski() {
-                    translate([0,0,base_thickness+fillet_radius*2]) cylinder(r=bottle_max_diameter/2, h=rim_height);
-                    sphere(r=2*fillet_radius);
+    union() {
+        difference() {
+            // basic outline
+            hull() {
+                rounded_cylinder(r=base_radius, h=rim_height, fillet=fillet_radius);
+                translate([0,base_radius + support_base_radius,0]) {
+                    rounded_cylinder(r=support_base_radius, h=rim_height, fillet=fillet_radius);
                 }
             }
-            translate([0,base_radius + support_base_radius,0]) cylinder(r=support_base_radius, h=support_height);
+            // bottle well
+            translate([0,0,base_thickness]) {
+                rounded_cylinder(r=bottle_max_diameter/2+fillet_radius, h=rim_height, fillet=fillet_radius);
+            }
         }
+        translate([0,base_radius + support_base_radius,0]) support_rod_mount();
+        // bottle well lip
+        rounded_hollow_cylinder(r=base_radius, h=rim_height,r2=fillet_radius);
+    }
 }
 
 module filleted_base() {
     difference() {
-        //minkowski() {
-            basic_base();
-            sphere(r=fillet_radius);
-        //}
-        //translate([0,base_radius + support_base_radius,-1]) cylinder(r=support_rod_diameter/2, h=rim_height+100);
+        basic_base();
+        translate([0,base_radius + support_base_radius,-1]) cylinder(r=support_rod_diameter/2, h=rim_height+100);
     }
     //#tray();
 }
 
+module filter_holder() {
+    cylinder();
+}
+
 filleted_base();
+//basic_base();
+//rounded_hollow_cylinder(r=3, h=1, r2=0.2);
+
