@@ -92,10 +92,30 @@ module filleted_base() {
 }
 
 module filter_holder() {
-    cylinder();
+    radius = 48;
+    slope = 48/72;
+    ring_height = 10;
+    gap_width = 20;
+
+    difference() {
+        union() {
+            translate([-wall_thickness/2, base_radius, 0]) cube(,
+        }
+            cylinder(r1=radius-wall_thickness, r2=radius-slope*ring_height-wall_thickness, h=ring_height);
+    union() {
+
+    }
+        translate([0, -gap_width/2, 0])
+            union() {
+                cylinder(r1=radius, r2=radius-slope*ring_height, h=ring_height);
+            }
+                cube([radius+1,gap_width,ring_height]);
+    }
+    translate([0, base_radius + support_base_radius,0]) support_rod_mount();
 }
 
-filleted_base();
+
+//filleted_base();
 //basic_base();
 //rounded_hollow_cylinder(r=3, h=1, r2=0.2);
-
+filter_holder();
