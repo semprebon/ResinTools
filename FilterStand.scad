@@ -98,18 +98,19 @@ module filter_holder() {
     gap_width = 20;
 
     difference() {
-        union() {
-            translate([-wall_thickness/2, base_radius, 0]) cube(,
+        translate([-wall_thickness/2, 0, 0]) {
+            cube([wall_thickness,base_radius+support_base_radius-support_rod_diameter,ring_height]);
         }
-            cylinder(r1=radius-wall_thickness, r2=radius-slope*ring_height-wall_thickness, h=ring_height);
-    union() {
-
+        cylinder(r1=radius-wall_thickness, r2=radius-slope*ring_height-wall_thickness, h=ring_height);
     }
-        translate([0, -gap_width/2, 0])
-            union() {
-                cylinder(r1=radius, r2=radius-slope*ring_height, h=ring_height);
-            }
-                cube([radius+1,gap_width,ring_height]);
+    minkowski() {
+    difference() {
+        cylinder(r1=radius, r2=radius-slope*ring_height, h=ring_height);
+        cylinder(r1=radius-wall_thickness, r2=radius-slope*ring_height-wall_thickness, h=ring_height);
+        translate([-gap_width/2, -(radius), 0])
+            cube([gap_width, radius+1,ring_height]);
+    }
+    sphere(r=1);
     }
     translate([0, base_radius + support_base_radius,0]) support_rod_mount();
 }
