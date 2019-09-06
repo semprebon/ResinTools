@@ -11,11 +11,12 @@ base_thickness = 2;
 _base_radius = bottle_max_diameter/2 + rim_height   ;
 base_radius = bottle_max_diameter/2 + wall_thickness;
 support_base_radius = support_rod_diameter + wall_thickness;
+support_offset = base_radius + support_base_radius;
 
 fudge = 0.001;
 
 _rim_thickness = 3;
-fillet_radius = 2;
+fillet_radius = 1.5;
 $fa = 5;
 $fs = 0.2;
 
@@ -39,7 +40,7 @@ module rounded_cylinder(r=1, h=1, fillet=0.1) {
 module hollow_cylinder(r=1, h=1, r2=0.5) {
     difference() {
         cylinder(r=r, h=h);
-        #cylinder(r=r2, h=h);
+        cylinder(r=r2, h=h);
     }
 }
 
@@ -49,16 +50,29 @@ module rounded_hollow_cylinder(r=1, h=1, r2=0.1) {
     translate([0,0,h-r2]) torus(r1=r-r2, r2=r2);
 }
 
-module support_rod_mount() {
+module support_rod_mount2(h = 1.0) {
     bevel = 1;
     difference() {
-        rounded_cylinder(r=support_base_radius, h=support_height, fillet=fillet_radius);
+        rounded_cylinder(r=support_base_radius, h=h, fillet=fillet_radius);
         union() {
-            cylinder(r=support_rod_diameter/2, h=support_height);
+            cylinder(r=support_rod_diameter/2, h=h);
             translate([0,0,support_height-bevel]) {
                 cylinder(r1=support_rod_diameter/2, r2=support_rod_diameter/2+bevel, h=bevel+fudge);
             }
         }
+    }
+}
+
+module support_rod_mount(radius=40, height=20, inner_radius=10) {
+    translate([0, support_offset,0]) {
+        hollow_cylinder(r=radius, r2=inner_radius, h=height);
+    }
+}
+
+module bevelled_support_rod_mount(radius=40, height=20, bevel=1) {
+    translate([0,0,bevel]) minkowski() {
+        support_rod_mount(radius=radius-bevel, inner_radius=support_rod_diameter/2+bevel, height=height-bevel);
+        bevel(size=bevel);
     }
 }
 
@@ -77,7 +91,7 @@ module basic_base() {
                 rounded_cylinder(r=bottle_max_diameter/2+fillet_radius, h=rim_height, fillet=fillet_radius);
             }
         }
-        translate([0,base_radius + support_base_radius,0]) support_rod_mount();
+        translate([0,base_radius + support_base_radius,0]) support_rod_mount(h = support_height);
         // bottle well lip
         rounded_hollow_cylinder(r=base_radius, h=rim_height,r2=fillet_radius);
     }
@@ -91,32 +105,60 @@ module filleted_base() {
     //#tray();
 }
 
-module filter_holder() {
-    radius = 48;
-    slope = 48/72;
-    ring_height = 10;
-    gap_width = 20;
+module bevel(size=1.0) {
+    side = size * sqrt(2);
+    linear_extrude(height=size, scale=0) square(size=side, center=true);
+    mirror([0,0,1]) linear_extrude(height=size, scale=0) square(size=side, center=true);
+}
+
+module wedge(r=2, h=1, angle=60) {
+    rotate_extrude(angle=angle) square([r,h]);
+}
+
+module filter_ring(radius=48, height=10, gap_angle=60, slope=0.5, thickness=3, arm_length=10) {
+    total_arm_length = arm_length + slope*height;
+    rb = radius;
+    rt = radius - slope*height;
 
     difference() {
-        translate([-wall_thickness/2, 0, 0]) {
-            cube([wall_thickness,base_radius+support_base_radius-support_rod_diameter,ring_height]);
+        union() {
+            // arm
+            translate([-thickness/2, radius - slope*height, 0]) {
+                cube([thickness, total_arm_length, height]);
+            }
+            cylinder(r1=rb, r2=rt, h=height);
         }
-        cylinder(r1=radius-wall_thickness, r2=radius-slope*ring_height-wall_thickness, h=ring_height);
+        translate([0,0,-fudge]) {
+            cylinder(r1=rb-wall_thickness, r2=rt-wall_thickness, h=height+2*fudge);
+        }
+        // gap for drip
+        rotate([0,0,-90-gap_angle/2]) wedge(r=radius*2, h=height+2*fudge, angle=gap_angle);
+        //translate([-gap_width/2, -(radius), 0])
+        //    cube([gap_width, radius+1,ring_height]);
     }
-    minkowski() {
-    difference() {
-        cylinder(r1=radius, r2=radius-slope*ring_height, h=ring_height);
-        cylinder(r1=radius-wall_thickness, r2=radius-slope*ring_height-wall_thickness, h=ring_height);
-        translate([-gap_width/2, -(radius), 0])
-            cube([gap_width, radius+1,ring_height]);
+}
+
+module beveled_filter_ring(radius=48, height=10, slope=48/72, arm_length=10, bevel=2) {
+    translate([0,0,bevel]) minkowski() {
+        union() {
+            filter_ring(radius=radius-bevel, height=height-bevel, slope=48/72, arm_length=arm_length-bevel);
+        }
+        bevel(size=bevel);
     }
-    sphere(r=1);
-    }
-    translate([0, base_radius + support_base_radius,0]) support_rod_mount();
+}
+
+module filter_holder() {
+    beveled_filter_ring(radius=48, height=10, slope=48/72, arm_length=10, bevel=2);
+    bevelled_support_rod_mount(radius=support_base_radius, height=10, bevel=2);
 }
 
 
 //filleted_base();
 //basic_base();
 //rounded_hollow_cylinder(r=3, h=1, r2=0.2);
+//filter_holder();
+//filter_ring();
+//beveled_filter_ring();
 filter_holder();
+//bevel(2);
+//wedge(r=3, h=1, angle=45);
