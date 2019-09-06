@@ -65,7 +65,10 @@ module support_rod_mount2(h = 1.0) {
 
 module support_rod_mount(radius=40, height=20, inner_radius=10) {
     translate([0, support_offset,0]) {
-        hollow_cylinder(r=radius, r2=inner_radius, h=height);
+        difference() {
+            hollow_cylinder(r=radius, r2=inner_radius, h=height);
+            rotate([0,0,-90-10]) wedge(r=radius*2, h=height+2*fudge, angle=20);
+        }
     }
 }
 
@@ -132,7 +135,7 @@ module filter_ring(radius=48, height=10, gap_angle=60, slope=0.5, thickness=3, a
             cylinder(r1=rb-wall_thickness, r2=rt-wall_thickness, h=height+2*fudge);
         }
         // gap for drip
-        rotate([0,0,-90-gap_angle/2]) wedge(r=radius*2, h=height+2*fudge, angle=gap_angle);
+        rotate([0,0,-90-gap_angle/2]) wedge(r=radius*2, h=height+2*fudge, angle=10);
         //translate([-gap_width/2, -(radius), 0])
         //    cube([gap_width, radius+1,ring_height]);
     }
@@ -140,9 +143,7 @@ module filter_ring(radius=48, height=10, gap_angle=60, slope=0.5, thickness=3, a
 
 module beveled_filter_ring(radius=48, height=10, slope=48/72, arm_length=10, bevel=2) {
     translate([0,0,bevel]) minkowski() {
-        union() {
-            filter_ring(radius=radius-bevel, height=height-bevel, slope=48/72, arm_length=arm_length-bevel);
-        }
+        filter_ring(radius=radius-bevel, height=height-bevel, slope=48/72, arm_length=arm_length-bevel);
         bevel(size=bevel);
     }
 }
