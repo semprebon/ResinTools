@@ -110,6 +110,8 @@ module basic_base() {
                 bevelled_cylinder(r=bottle_max_diameter/2, h=rim_height, bevel=bevel);
             }
             translate([0,0,base_thickness+bevel]) cylinder(r=bottle_max_diameter/2+bevel, h=rim_height);
+            // rod hole
+            translate([0,support_offset,base_thickness]) cylinder(r=support_rod_radius, h=rim_height*2);
         }
         bevelled_support_rod_mount(radius=support_base_radius, height=support_height, inner_radius=support_rod_radius);
         // bottle well lip
@@ -124,7 +126,7 @@ module bevelled_base() {
 module filleted_base() {
     difference() {
         basic_base();
-        translate([0,base_radius + support_base_radius,-1]) cylinder(r=support_rod_diameter/2, h=rim_height+100);
+        translate([0,base_radius + support_base_radius,base_thickness]) cylinder(r=support_rod_diameter/2, h=rim_height+100);
     }
     //#tray();
 }
@@ -139,7 +141,7 @@ module wedge(r=2, h=1, angle=60) {
     rotate_extrude(angle=angle) square([r,h]);
 }
 
-module filter_ring(radius=48, height=10, gap_angle=60, slope=0.5, thickness=3, arm_length=10) {
+module filter_ring(radius=48, height=25, arm_height=10, gap_angle=60, slope=0.5, thickness=2, arm_length=10) {
     total_arm_length = arm_length + slope*height;
     rb = radius;
     rt = radius - slope*height;
@@ -148,62 +150,65 @@ module filter_ring(radius=48, height=10, gap_angle=60, slope=0.5, thickness=3, a
         union() {
             // arm
             translate([-thickness/2, radius - slope*height, 0]) {
-                cube([thickness, total_arm_length, height]);
+                cube([thickness, total_arm_length, arm_height]);
             }
             cylinder(r1=rb, r2=rt, h=height);
         }
         translate([0,0,-fudge]) {
-            cylinder(r1=rb-wall_thickness, r2=rt-wall_thickness, h=height+2*fudge);
+            cylinder(r1=rb-thickness, r2=rt-thickness, h=height+2*fudge);
         }
         // gap for drip
         rotate([0,0,-90-gap_angle/2]) wedge(r=radius*2, h=height+2*fudge, angle=gap_angle);
     }
 }
 
-module beveled_filter_ring(radius=48, height=10, slope=48/72, arm_length=10, bevel=2) {
+module beveled_filter_ring(radius=48, height=25, arm_height=10, slope=48/72, arm_length=10, bevel=2) {
     translate([0,0,bevel]) minkowski() {
-        filter_ring(radius=radius-bevel, height=height-bevel, slope=48/72, arm_length=arm_length, gap_angle=60);
+        filter_ring(radius=radius-bevel, height=height-bevel, arm_height=arm_height-bevel, slope=48/72,
+            arm_length=arm_length, gap_angle=60);
         bevel(size=bevel);
     }
 }
 
-module filter_holder(radius=48, height=10, bevel=0.5) {
+module filter_holder(radius=48, height=25, bevel=0.5) {
+    arm_height = 10;
     slope = 2/3;
     arm_length = support_offset - radius - support_rod_radius;
-    bolt_flange_length = 7;
+    bolt_flange_length = 10;
     gap_width=2;
     bolt_flange_thickness = 3;
     separation = 2*bolt_flange_thickness + gap_width;
     bolt_radius = 3.4/2;
 
-    beveled_filter_ring(radius=radius, height=height, slope=slope, arm_length=arm_length, bevel=bevel);
+    echo(radius=radius, height=height, arm_height=arm_height, slope=slope, arm_length=arm_length, bevel=bevel);
+    beveled_filter_ring(radius=radius, height=height, arm_height=arm_height, slope=slope, arm_length=arm_length, bevel=bevel);
     difference() {
         union() {
-            bevelled_support_rod_mount(radius=support_rod_radius+bolt_flange_thickness, height=height, bevel=bevel);
+            bevelled_support_rod_mount(radius=support_rod_radius+bolt_flange_thickness, height=arm_height, bevel=bevel);
             minkowski() {
-                translate([-separation/2+bevel,support_offset+support_rod_radius+bevel,height/2-bolt_flange_length/2+bevel]) {
-                    cube([separation-bevel*2, bolt_flange_length, bolt_flange_length-bevel*2]);
+                translate([-separation/2+bevel,support_offset+support_rod_radius+bevel,bevel]) {
+                    cube([separation-bevel*2, bolt_flange_length, arm_height-bevel]);
                 }
                 bevel(size=bevel);
             }
         }
-        // thighten gap
-        translate([-gap_width/2,support_offset,0]) cube([gap_width, radius*2, height*2]);
+        // thightening gap
+        translate([-gap_width/2,support_offset,-1]) cube([gap_width, radius*2, height*2]);
 
         // bolt hole
-        translate([0,support_offset+support_rod_radius+bevel+bolt_flange_length/2+bevel,height/2]) {
+        translate([0,support_offset+support_rod_radius+bevel+bolt_flange_length-2.5*bolt_radius,arm_height/2]) {
             rotate([0,90,0]) cylinder(r=bolt_radius, h=40, center=true);
         }
     }
 }
 
 
-//filleted_base();
-basic_base();
+filleted_base();
+//basic_base();
 //bevelled_hollow_cylinder(r=3, h=1, r2=1, bevel=0.1);
 //filter_holder();
 //filter_ring();
-//beveled_filter_ring();
-//filter_holder();
+//beveled_filter_ring(radius = 48, height = 25, arm_height = 10, slope = 0.666667, arm_length = 12.36, bevel = 0.5);
+//filter_holder(height=25);
 //bevel(2);
 //wedge(r=3, h=1, angle=45);
