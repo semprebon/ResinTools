@@ -29,18 +29,69 @@ function grasper_profile(x, c) = x - floor(x*c)/c;
 
 function odd(x) = (x % 2) == 1;
 
+function range_for(a) = [0:(len(a)-1)];
+
+function quot(a, b) = [ for(i = [0:(len(a)-1)]) a[i] / b[i] ];
+function prod(a, b) = [ for(i = [0:(len(a)-1)]) a[i] * b[i] ];
+
 /*
 Create the grasping end. The contact surface is along the xz plane
 */
 module grasper(dim, base_height=tip*tan(min_deflection)) {
     base_dim = [dim.x, dim.y, base_height];
     //cube(base_dim);
-    tooth_count = 4;
+    tooth_count = 2;
     tooth_width = dim.x / tooth_count;
 
     profile = [ for (x = [0 : tooth_count*2]) [x*dim.x/(tooth_count*2), odd(x) ? dim.y : 0] ];
     echo(dim=dim, tooth_width=tooth_width, profile=profile);
     linear_extrude(dim.z) polygon(concat([[0,0]],profile,[[dim.x,-base_height]])) ;
+}
+
+module mesh() {
+    difference() {
+        children();
+        mirror([0,1,0]) {
+            children(1);
+        }
+    }
+}
+
+function offset(base, dim, pos) = offset + prod(dim, pos);
+/*
+Create the grasping end. The contact surface is along the xz plane
+*/
+module spike_grasper(dim, base_width=tip*tan(min_deflection)) {
+    //cube(base_dim);
+    tooth_count = 2;
+    tooth_width = dim.x / tooth_count;
+
+//    profile = [ for (x = [0 : tooth_count*2]) [x*dim.x/(tooth_count*2), odd(x) ? dim.y : 0] ];
+//   echo(dim=dim, tooth_width=tooth_width, profile=profile);
+//    linear_extrude(dim.z) polygon(concat([[0,0]],profile,[[dim.x,-base_height]])) ;
+//    linear_extrude(height) polygon([[0,0],[0,width],[tip, width+base_width],[tip,0]]) ;
+
+    tooth_counts = [3,-1000,2];
+    echo(dim=dim);
+    tooth_dim = quot(dim, tooth_counts);
+    tooth_offset = tooth_dim / 2;
+    r = min(tooth_dim.x, tooth_dim.z)/2;
+    tooth_height = r*2;
+    echo(tooth_counts=tooth_counts, tooth_dim=tooth_dim, tooth_offset=tooth_offset, r=r);
+    for (x = [0:2]) {
+        for (z = [0:1]) {
+            echo(x=x, z=z, p=tooth_offset + prod([x,0,z], tooth_dim));
+            if (odd(z*tooth_counts.x+x)) {
+                translate(tooth_offset + prod([x,0,z], tooth_dim)) rotate([ odd(z*tooth_counts.x+x)?-90:+90,0,0]) cylinder(r1=r, r2=0, h=tooth_height);
+                translate([0,-dim.y,0]) translate(prod([x,0,z], tooth_dim)) cube([tooth_dim.x, base_width, tooth_dim.z]);
+            } else {
+                difference() {
+                    translate([0,-dim.y,0]) translate(prod([x,0,z], tooth_dim)) cube([tooth_dim.x, base_width, tooth_dim.z]);
+                    translate(tooth_offset + prod([x,0,z], tooth_dim)) rotate([ odd(z*tooth_counts.x+x)?-90:+90,0,0]) cylinder(r1=r, r2=0, h=tooth_height);
+                }
+            }
+        }
+    }
 }
 
 module position_grasper(base=true) {
@@ -83,5 +134,5 @@ module tong() {
     }
 }
 
-tong();
-//grasper([tip, width, height]);
+//tong();
+spike_grasper([tip, width, height]);
