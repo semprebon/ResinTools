@@ -1,10 +1,11 @@
-spring_radius = 20;
-length = 150;
-width = 4;
-height = 6;
+spring_radius = 15;
+length = 120;
+width = 3.2;
+height = 15;
 gap = 0.2;
-crossover_point = 40;
+crossover_point = 30;
 tip = 15;
+fudge = 0.001;
 
 inner_radius = spring_radius-width/2;
 outer_radius = spring_radius+width/2;
@@ -24,6 +25,29 @@ module arc3d(ri=1, ro=2, h=1, angle=360) {
     rotate_extrude(angle=angle) translate([ri,0]) square([ro-ri, h]);
 }
 
+function grasper_profile(x, c) = x - floor(x*c)/c;
+
+function odd(x) = (x % 2) == 1;
+
+/*
+Create the grasping end. The contact surface is along the xz plane
+*/
+module grasper(dim, base_height=tip*tan(min_deflection)) {
+    base_dim = [dim.x, dim.y, base_height];
+    //cube(base_dim);
+    tooth_count = 4;
+    tooth_width = dim.x / tooth_count;
+
+    profile = [ for (x = [0 : tooth_count*2]) [x*dim.x/(tooth_count*2), odd(x) ? dim.y : 0] ];
+    echo(dim=dim, tooth_width=tooth_width, profile=profile);
+    linear_extrude(dim.z) polygon(concat([[0,0]],profile,[[dim.x,-base_height]])) ;
+}
+
+module position_grasper(base=true) {
+    grasper_width = tip * tan(min_deflection);
+    translate([length-tip, outer_radius, 0]) rotate([0,0,min_deflection]) children();
+}
+
 module tong_half() {
     crossover_center = (crossover_point + tip_start)/2;
     crossover_height = height/2-gap;
@@ -34,25 +58,30 @@ module tong_half() {
     rotate([0,0,90]) arc3d(ri=inner_radius, ro=outer_radius, h=height, angle=90);
 
     // arms
+    tip_transition = 1;
     difference() {
         translate([0,inner_radius,0]) cube([length,width,height]);
         linear_extrude(crossover_height) {
-            polygon([[crossover_point, inner_radius], [crossover_point+d1, outer_radius], [tip_start, outer_radius], [tip_start-d2, inner_radius]]);
+            polygon([[crossover_point, inner_radius-fudge], [crossover_point+d1, outer_radius+fudge],
+                [tip_start-tip_transition, 2*outer_radius], [tip_start-tip_transition, inner_radius]]);
         }
     }
-    // grasper
-    grasper_width = tip * tan(min_deflection);
-    linear_extrude(height) {
-        polygon([[tip_start, outer_radius], [length, outer_radius], [length, outer_radius+grasper_width]]);
-    }
-    translate([length-width/2, outer_radius+grasper_width, width-1]) scale([width, width, height/6]) rotate([90,90,90]) linear_extrude(1, center=true) polygon([[-3,-1],[-3,1],[-1,0],[1,1],[3,0],[3,-1],[-3,-1]]);
-
-
 }
 
 module tong() {
+    grasper_base_width = tip*tan(min_deflection) + fudge;
     tong_half();
-    translate([0,0,height]) mirror([0,0,1]) mirror([0,1,0]) tong_half();
+    position_grasper() grasper([tip, width, height]);
+    translate([0,0,height]) mirror([0,0,1]) mirror([0,1,0]) {
+        tong_half();
+        position_grasper() {
+            translate([0,width,0]) mirror([0,1,0]) difference() {
+                linear_extrude(height) polygon([[0,0],[0,width],[tip, width+grasper_base_width],[tip,0]]) ;
+                grasper([tip, width, height], grasper_base_width);
+            }
+        }
+    }
 }
 
 tong();
+//grasper([tip, width, height]);
