@@ -4,7 +4,7 @@ bottle_max_diameter = 95;
 bottle_max_height = 183;
 support_rod_diameter = 9.72; // 3/8 in
 support_height = 20;
-wall_thickness = 4;
+wall_thickness = 2.5;
 
 rim_height = 10;
 base_thickness = 2;
@@ -157,17 +157,19 @@ module filter_ring(radius=48, height=25, arm_height=10, gap_angle=60, slope=0.5,
         translate([0,0,-fudge]) {
             cylinder(r1=rb-thickness, r2=rt-thickness, h=height+2*fudge);
         }
-        // gap for drip
-        rotate([0,0,-90-gap_angle/2]) wedge(r=radius*2, h=height+2*fudge, angle=gap_angle);
+        // drip gap
+        if (gap_angle > 0) {
+            rotate([0,0,-90-gap_angle/2]) wedge(r=radius*2, h=height+2*fudge, angle=gap_angle);
+        }
     }
 }
 
 module beveled_filter_ring(radius=48, height=25, arm_height=10, slope=48/72, arm_length=10, bevel=2) {
-    translate([0,0,bevel]) minkowski() {
+//    translate([0,0,bevel]) minkowski() {
         filter_ring(radius=radius-bevel, height=height-bevel, arm_height=arm_height-bevel, slope=48/72,
-            arm_length=arm_length, gap_angle=60);
-        bevel(size=bevel);
-    }
+            arm_length=arm_length, gap_angle=0);
+//        bevel(size=bevel);
+//    }
 }
 
 module filter_holder(radius=48, height=25, bevel=0.5) {
@@ -203,12 +205,12 @@ module filter_holder(radius=48, height=25, bevel=0.5) {
 }
 
 
-filleted_base();
+//filleted_base();
 //basic_base();
 //bevelled_hollow_cylinder(r=3, h=1, r2=1, bevel=0.1);
 //filter_holder();
 //filter_ring();
-//beveled_filter_ring(radius = 48, height = 25, arm_height = 10, slope = 0.666667, arm_length = 12.36, bevel = 0.5);
+filter_holder(radius = 57, height = 32, bevel = 0.5);
 //filter_holder(height=25);
 //bevel(2);
 //wedge(r=3, h=1, angle=45);
